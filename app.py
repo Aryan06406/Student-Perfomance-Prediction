@@ -13,10 +13,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 try:
     gpa_model = joblib.load(
-        os.path.join(BASE_DIR, "models", "regression", "histgb_gpa_pipeline.pkl")
+        os.path.join(BASE_DIR, "models", "regression", "highschool", "histgb_gpa_pipeline.pkl")
     )
     dropout_model = joblib.load(
-        os.path.join(BASE_DIR, "models", "classification", "logistic_dropout_pipeline.pkl")
+        os.path.join(BASE_DIR, "models", "classification", "highschool", "logistic_dropout_pipeline.pkl")
     )
 except Exception as e:
     logging.error("Model loading failed")

@@ -358,15 +358,11 @@ ARCHETYPE_DEFAULTS = {
     'dropped_out': {'AttendanceRate':0.0,'StudyHours':0.0,'Effort_Score':0.0,'Social_Distraction':0.0,'Assignment_Ratio':0.0,'exam_anxiety_score':0.0,'stress_survey_score':0.0,'motivation_survey_score':0.0,'sleep_hours':0.0,'FreeTime':0,'Romantic':0,'GoOut':0,'Extracurricular':0,'PartTimeJob':0},
 }
 
-def impute_future_semester(base_static: dict, base_current: dict, carry: dict, sem_id: int, noise_std: float = 0.0) -> dict:
-    """Build feature dict for a future semester ensuring ALL previous behavior flags are kept"""
-    arch = carry.get('archetype', 'pragmatist')
-    defaults = ARCHETYPE_DEFAULTS.get(arch, ARCHETYPE_DEFAULTS['pragmatist'])
-    
-    # Use baseline current as the foundation so ParentSupport, etc., are never lost
+def impute_future_semester(base_static: dict, base_current: dict, carry: dict, sem_id: int) -> dict:
+    """Builds the base structure for a future semester without resetting behaviors."""
     current = base_current.copy()
-    current.update(defaults)
-
+    
+    # Reset semester-specific event flags so they don't 'stick' forever
     current['Shock_Event'] = 'none'
     current['Shock_Magnitude'] = 0.0
     current['Intervention_Applied'] = 'none'
@@ -374,47 +370,120 @@ def impute_future_semester(base_static: dict, base_current: dict, carry: dict, s
     current['Backlog_Count'] = 0
     current['GPA'] = carry['prev_gpa']
 
-    if noise_std > 0:
-        for field in ['StudyHours', 'AttendanceRate', 'Effort_Score']:
-            if field in current:
-                current[field] = float(np.clip(current[field] + np.random.normal(0, noise_std * 0.5), 0.0, 10.0 if field == 'StudyHours' else 1.0))
     return build_feature_dict(base_static, carry, current, sem_id)
+
+def simulate_next_semester(static: dict, carry: dict, prev_features: dict, sem_id: int, mode: str = 'trajectory') -> dict:
+    """Evolves the student's behavior dynamically over time."""
+    current = prev_features.copy()
+
+    # 1. Natural Drift (Senioritis): Attendance slowly drops by 1-2% after Sem 4
+    drift_factor = 0.99 if sem_id > 4 else 1.0
+    current['AttendanceRate'] = np.clip(current.get('AttendanceRate', 0.8) * drift_factor, 0.4, 1.0)
+
+    # 2. Behavioral Feedback: Motivation boosts study hours, Burnout drops them
+    gpa_improvement = carry.get('motivation', 5.0) / 10.0  # Scale 0.1 to 1.0
+    burnout_penalty = carry.get('burnout', 0.0) / 20.0     # Penalty grows as burnout grows
+    
+    current['StudyHours'] = np.clip(
+        current.get('StudyHours', 3.0) + (gpa_improvement * 0.4) - (burnout_penalty * 1.5),
+        0.5, 15.0
+    )
+    motivation_factor = carry.get('motivation', 5) / 10.0
+    current['StudyHours'] += (motivation_factor * 0.5)
+    # 3. Difficulty Spike: Sems 5, 6, 7 require more effort to maintain the same GPA
+    difficulty_spike = 1.05 if sem_id in [5, 6, 7] else 1.0
+    current['Effort_Score'] = np.clip(current.get('Effort_Score', 0.7) / difficulty_spike, 0.2, 1.0)
+    current['Effort_Score'] -= burnout_penalty
+
+    # 4. Monte Carlo Variance: Inject cumulative noise into behaviors
+    if mode == 'montecarlo':
+        current['StudyHours'] += np.random.normal(0, 0.6)
+        current['AttendanceRate'] += np.random.normal(0, 0.04)
+        current['Effort_Score'] += np.random.normal(0, 0.05)
+        
+        # Ensure values stay in logical bounds after noise
+        current['StudyHours'] = np.clip(current['StudyHours'], 0.0, 15.0)
+        current['AttendanceRate'] = np.clip(current['AttendanceRate'], 0.1, 1.0)
+        current['Effort_Score'] = np.clip(current['Effort_Score'], 0.1, 1.0)
+
+    return current
+
+def simulate_behavioral_drift(current, carry, sem_id):
+    updated = current.copy()
+    
+    # Apply "Senioritis" drift: Attendance drops 1% per sem after Sem 4
+    if sem_id > 4:
+        updated['AttendanceRate'] *= 0.99 
+    
+    # Apply Motivation feedback: High motivation boosts Study Hours
+    motivation_factor = carry.get('motivation', 5) / 10.0
+    updated['StudyHours'] += (motivation_factor * 0.5)
+    
+    # Apply Burnout: High burnout reduces Effort_Score
+    burnout_penalty = carry.get('burnout', 0) / 20.0
+    updated['Effort_Score'] -= burnout_penalty
+    
+    return updated
 
 def simulate_one_trajectory(static: dict, carry: dict, current_sem: int, current_features: dict, snapshot: str, noise_std: float = 0.0) -> list:
     trajectory = []
     c = carry.copy()
 
+    # Base observation
     feats = build_feature_dict(static, c, current_features, current_sem)
     r_gpa  = run_prediction(snapshot, 'gpa', 'lgbm', feats)
     r_drop = run_prediction(snapshot, 'dropout', 'lgbm_recall', feats)
     r_arch = run_prediction(snapshot, 'archetype', 'lgbm', feats)
 
+    # Before the loop (Observed Semester)
     trajectory.append({
         'semester': current_sem, 'stage': snapshot, 'data_type': 'observed',
-        'GPA_Predicted': r_gpa['GPA_Predicted'], 'Dropout_Probability': r_drop['Dropout_Probability'],
-        'Dropout_Predicted': r_drop['Dropout_Predicted'], 'Archetype': r_arch['Archetype_Predicted'],
-        'Risk_Tier': r_gpa['Risk_Tier'], 'Archetype_Probabilities': r_arch['Archetype_Probabilities'],
+        'GPA_Predicted': r_gpa['GPA_Predicted'],
+        'Dropout_Probability': r_drop['Dropout_Probability'],
+        'Dropout_Predicted': r_drop['Dropout_Predicted'], 
+        'Archetype': r_arch['Archetype_Predicted'],
+        'Risk_Tier': r_gpa['Risk_Tier'], 
+        'Archetype_Probabilities': r_arch['Archetype_Probabilities'],
+        'StudyHours': current_features.get('StudyHours', 0),
+        'AttendanceRate': current_features.get('AttendanceRate', 0),
+        'Effort_Score': current_features.get('Effort_Score', 0)
     })
 
     c = advance_carry(c, current_features, c['prev_gpa'], r_gpa['GPA_Predicted'], current_sem)
     c['archetype'] = r_arch['Archetype_Predicted']
+
+    # Initialize the "evolving" features with the current semester's features
+    evolved_current = current_features.copy()
 
     for fut_sem in range(current_sem + 1, MAX_SEMESTERS + 1):
         if c['archetype'] == 'dropped_out':
             trajectory.append({'semester': fut_sem, 'stage': 'N/A', 'data_type': 'simulated', 'status': 'dropped_out', 'GPA_Predicted': 0.0, 'Dropout_Probability': 1.0, 'Dropout_Predicted': True, 'Archetype': 'dropped_out', 'Risk_Tier': 'Critical Risk', 'Archetype_Probabilities': {}})
             break
 
-        # Pass current_features so background lifestyle parameters carry forward
-        feats = impute_future_semester(static, current_features, c, fut_sem, noise_std)
+        # 1. Evolve behavioral stats for the NEXT semester
+        mode = 'montecarlo' if noise_std > 0 else 'trajectory'
+        evolved_current = simulate_next_semester(static, c, evolved_current, fut_sem, mode)
+
+        # 2. Build the final dictionary to pass to the model
+        feats = impute_future_semester(static, evolved_current, c, fut_sem)
+
+        # 3. Predict using the newly evolved features
         r_gpa  = run_prediction('before_ia', 'gpa', 'lgbm', feats)
         r_drop = run_prediction('before_ia', 'dropout', 'lgbm_recall', feats)
         r_arch = run_prediction('before_ia', 'archetype', 'lgbm', feats)
 
+        # Inside the loop (Simulated Semesters)
         trajectory.append({
             'semester': fut_sem, 'stage': 'before_ia', 'data_type': 'simulated',
-            'GPA_Predicted': r_gpa['GPA_Predicted'], 'Dropout_Probability': r_drop['Dropout_Probability'],
-            'Dropout_Predicted': r_drop['Dropout_Predicted'], 'Archetype': r_arch['Archetype_Predicted'],
-            'Risk_Tier': r_gpa['Risk_Tier'], 'Archetype_Probabilities': r_arch['Archetype_Probabilities'],
+            'GPA_Predicted': r_gpa['GPA_Predicted'],
+            'Dropout_Probability': r_drop['Dropout_Probability'],
+            'Dropout_Predicted': r_drop['Dropout_Predicted'], 
+            'Archetype': r_arch['Archetype_Predicted'],
+            'Risk_Tier': r_gpa['Risk_Tier'], 
+            'Archetype_Probabilities': r_arch['Archetype_Probabilities'],
+            'StudyHours': evolved_current.get('StudyHours', 0),
+            'AttendanceRate': evolved_current.get('AttendanceRate', 0),
+            'Effort_Score': evolved_current.get('Effort_Score', 0)
         })
 
         c = advance_carry(c, feats, c['prev_gpa'], r_gpa['GPA_Predicted'], fut_sem)

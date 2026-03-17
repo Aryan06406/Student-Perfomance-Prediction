@@ -568,7 +568,7 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
 </div><!-- end wrap -->
 
 <script>
-    const API_BASE_URL = window.location.origin;
+    const API_BASE_URL = 'https://student-perfomance-prediction-w4wb.onrender.com';
     let charts = {};
     let currentStage = 'before_ia';
     
@@ -662,103 +662,58 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
                 history: collectHistory(),
                 current: collectCurrent()
             };
-            
-            // Validate we have some data
-            const totalFields = Object.values(payload).reduce((sum, obj) => sum + Object.keys(obj || {}).length, 0);
-            if (totalFields === 0) {
-                throw new Error("Please fill in at least one field");
-            }
-            
             currentStudentData = { ...payload };
-            
-            console.log("📤 Sending prediction request with", totalFields, "fields...");
 
-            // Request the FULL profile
+            // Request the FULL profile so we can draw all charts
             const res = await fetch(`${API_BASE_URL}/predict/full_profile`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            // Check HTTP status
-            if (!res.ok) {
-                const errorText = await res.text();
-                console.error("❌ HTTP Error:", res.status, errorText);
-                throw new Error(`Server error (${res.status}): ${errorText}`);
-            }
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
             
-            // Parse JSON
-            let data;
-            try {
-                data = await res.json();
-            } catch (parseErr) {
-                console.error("❌ JSON Parse Error:", parseErr);
-                throw new Error("Invalid response from server (not valid JSON)");
-            }
-            
-            // Check for API error in response
-            if (data.error) {
-                console.error("❌ API Error Response:", data);
-                throw new Error(data.error);
-            }
-            
-            // Validate response structure
-            if (!data.summary || typeof data.summary !== 'object') {
-                console.error("❌ Missing 'summary' in response:", data);
-                throw new Error("Response missing 'summary' field");
-            }
-            if (!data.gpa || typeof data.gpa !== 'object') {
-                console.error("❌ Missing 'gpa' in response:", data);
-                throw new Error("Response missing 'gpa' field");
-            }
-            if (!data.dropout || typeof data.dropout !== 'object') {
-                console.error("❌ Missing 'dropout' in response:", data);
-                throw new Error("Response missing 'dropout' field");
-            }
-            
-            console.log("✅ Prediction successful:", data);
-            
-            // If we get here, response is valid!
+            // Map JSON response to UI
             updateDashboard(data);
 
         } catch (e) {
-            console.error("⚠️ Prediction Error:", e.message);
-            console.error("Full error:", e);
-            alert("⚠️ Prediction Error:\n\n" + e.message);
+            alert("⚠️ Prediction Error: " + e.message);
         } finally {
             document.getElementById('btnPredict').classList.remove('loading');
         }
     }
     
     function updateDashboard(r) {
-        // Carry Readout - with safe defaults
+        // Carry Readout
         const cr = document.getElementById('carryRow');
-        const cState = r.carry_state_computed || {};
+        const cState = r.carry_state_computed;
         cr.style.display='flex';
         cr.innerHTML=`
-          <span class="carry-chip">Sem <b>${cState.semester || '—'}</b></span>
-          <span class="carry-chip">Motivation <b>${((cState.Dynamic_Motivation || 5.0) * 1).toFixed(1)}</b></span>
-          <span class="carry-chip">Confidence <b>${((cState.Dynamic_Confidence || 5.0) * 1).toFixed(1)}</b></span>
-          <span class="carry-chip">Burnout <b>${((cState.Dynamic_Burnout || 0.0) * 1).toFixed(1)}</b></span>
-          <span class="carry-chip">Prev GPA <b>${((cState.Prev_GPA || 5.0) * 1).toFixed(2)}</b></span>
-          <span class="carry-chip">Archetype Prev <b>${(cState.Archetype_Prev || 'unknown').replace(/_/g,' ')}</b></span>`;
+          <span class="carry-chip">Sem <b>${cState.semester}</b></span>
+          <span class="carry-chip">Motivation <b>${cState.Dynamic_Motivation.toFixed(1)}</b></span>
+          <span class="carry-chip">Confidence <b>${cState.Dynamic_Confidence.toFixed(1)}</b></span>
+          <span class="carry-chip">Burnout <b>${cState.Dynamic_Burnout.toFixed(1)}</b></span>
+          <span class="carry-chip">Prev GPA <b>${cState.Prev_GPA.toFixed(2)}</b></span>
+          <span class="carry-chip">Archetype Prev <b>${cState.Archetype_Prev.replace(/_/g,' ')}</b></span>`;
 
-        // Metric Cards - with safe defaults
-        const gpa = r.summary.GPA_Predicted || 5.0;
-        const drop = r.summary.Dropout_Probability || 0.5;
-        const tier = r.summary.Overall_Risk_Tier || 'Unknown';
+        // Metric Cards
+        const gpa = r.summary.GPA_Predicted;
+        const drop = r.summary.Dropout_Probability;
+        const tier = r.summary.Overall_Risk_Tier;
         
-        document.getElementById('r_gpa').textContent = (gpa ? (gpa * 1).toFixed(2) : '—');
+        document.getElementById('r_gpa').textContent = gpa.toFixed(2);
         document.getElementById('r_gpa_sub').textContent= `/ 10.0  •  ${tier}`;
-        document.getElementById('r_drop').textContent = (drop ? ((drop * 100).toFixed(1) + '%') : '—');
+        document.getElementById('r_drop').textContent = (drop*100).toFixed(1)+'%';
         document.getElementById('r_drop_sub').textContent = `threshold 0.30  •  ${drop>=0.3?'⚠ Flagged':'✓ Safe'}`;
-        document.getElementById('r_arch').textContent = (r.summary.Archetype || 'unknown').replace(/_/g,' ');
+        document.getElementById('r_arch').textContent = r.summary.Archetype.replace(/_/g,' ');
         document.getElementById('r_gpa_badge').innerHTML = riskPill(tier);
         document.getElementById('r_drop_badge').innerHTML = riskPill(tier);
 
-        // Drivers & Advisory - with safe defaults
-        const drivers = (r.gpa && r.gpa.Key_Risk_Drivers) || [];
-        const adv = (r.gpa && r.gpa.Advisory_Notes) || [];
+        // Drivers & Advisory
+        const drivers = r.gpa.Key_Risk_Drivers || [];
+        const adv = r.gpa.Advisory_Notes || [];
         
         document.getElementById('r_drivers').innerHTML = drivers.map(d=>`<span class="dtag dtag-risk">${d}</span>`).join('') || '<span style="font-family:var(--mono);font-size:10px;color:var(--t4)">No significant risk drivers</span>';
         document.getElementById('r_advisory').innerHTML = adv.map(a=>`<span class="dtag dtag-adv">${a}</span>`).join('');

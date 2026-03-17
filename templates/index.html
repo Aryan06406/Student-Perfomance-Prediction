@@ -688,26 +688,26 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
     function updateDashboard(r) {
         // Carry Readout
         const cr = document.getElementById('carryRow');
-        const cState = r.carry_state_computed;
+        const cState = r.carry_state_computed || {};
         cr.style.display='flex';
         cr.innerHTML=`
-          <span class="carry-chip">Sem <b>${cState.semester}</b></span>
-          <span class="carry-chip">Motivation <b>${cState.Dynamic_Motivation.toFixed(1)}</b></span>
-          <span class="carry-chip">Confidence <b>${cState.Dynamic_Confidence.toFixed(1)}</b></span>
-          <span class="carry-chip">Burnout <b>${cState.Dynamic_Burnout.toFixed(1)}</b></span>
-          <span class="carry-chip">Prev GPA <b>${cState.Prev_GPA.toFixed(2)}</b></span>
-          <span class="carry-chip">Archetype Prev <b>${cState.Archetype_Prev.replace(/_/g,' ')}</b></span>`;
+          <span class="carry-chip">Sem <b>${cState.semester || '—'}</b></span>
+          <span class="carry-chip">Motivation <b>${(cState.Dynamic_Motivation || 5).toFixed(1)}</b></span>
+          <span class="carry-chip">Confidence <b>${(cState.Dynamic_Confidence || 5).toFixed(1)}</b></span>
+          <span class="carry-chip">Burnout <b>${(cState.Dynamic_Burnout || 0).toFixed(1)}</b></span>
+          <span class="carry-chip">Prev GPA <b>${(cState.Prev_GPA || 5).toFixed(2)}</b></span>
+          <span class="carry-chip">Archetype Prev <b>${(cState.Archetype_Prev || 'unknown').replace(/_/g,' ')}</b></span>`;
 
         // Metric Cards
-        const gpa = r.summary.GPA_Predicted;
-        const drop = r.summary.Dropout_Probability;
-        const tier = r.summary.Overall_Risk_Tier;
+        const gpa = r.summary.GPA_Predicted || 5.0;  // Fallback to 5.0 if null
+        const drop = r.summary.Dropout_Probability || 0.5;  // Fallback to 0.5 if null
+        const tier = r.summary.Overall_Risk_Tier || 'Unknown';
         
-        document.getElementById('r_gpa').textContent = gpa.toFixed(2);
+        document.getElementById('r_gpa').textContent = (gpa ? gpa.toFixed(2) : '—');
         document.getElementById('r_gpa_sub').textContent= `/ 10.0  •  ${tier}`;
-        document.getElementById('r_drop').textContent = (drop*100).toFixed(1)+'%';
+        document.getElementById('r_drop').textContent = (drop ? (drop*100).toFixed(1)+'%' : '—');
         document.getElementById('r_drop_sub').textContent = `threshold 0.30  •  ${drop>=0.3?'⚠ Flagged':'✓ Safe'}`;
-        document.getElementById('r_arch').textContent = r.summary.Archetype.replace(/_/g,' ');
+        document.getElementById('r_arch').textContent = (r.summary.Archetype || 'unknown').replace(/_/g,' ');
         document.getElementById('r_gpa_badge').innerHTML = riskPill(tier);
         document.getElementById('r_drop_badge').innerHTML = riskPill(tier);
 

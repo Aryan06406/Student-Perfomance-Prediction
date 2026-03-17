@@ -6,7 +6,3 @@ scikit-learn==1.6.1
 joblib==1.5.3
 flask-cors==6.0.2
 lightgbm==4.5.0
-scipy==1.14.1
-matplotlib==3.9.2
-seaborn==0.13.2
-shap==0.46.0

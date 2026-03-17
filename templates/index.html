@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SPIS — Student Performance Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist+Mono:wght@300;400;500&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#07090d;--s1:#0d1017;--s2:#131720;--s3:#181e28;
+  --b1:#1c2333;--b2:#232c3e;--b3:#2d3a52;
+  --green:#22d3a0;--green2:#0f7a5c;--green-dim:rgba(34,211,160,.08);
+  --amber:#f59e2a;--amber-dim:rgba(245,158,42,.08);
+  --red:#f04a6a;--red-dim:rgba(240,74,106,.08);
+  --blue:#5b8af0;--blue-dim:rgba(91,138,240,.08);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,.08);
+  --t1:#e8edf5;--t2:#8494b0;--t3:#4a567a;--t4:#2a3348;
+  --mono:'Geist Mono',monospace;--serif:'Instrument Serif',serif;--sans:'Geist',sans-serif;
+  --r:8px;--r2:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--t1);font-family:var(--sans);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden;}
+
+/* grid overlay */
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(34,211,160,.018) 1px,transparent 1px),linear-gradient(90deg,rgba(34,211,160,.018) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:3px;height:3px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--b3);border-radius:2px;}
+
+/* ── HEADER ─────────────────────────────────────── */
+header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 32px;background:rgba(7,9,13,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--b1);}
+.logo{font-family:var(--serif);font-size:20px;letter-spacing:.02em;color:var(--t1);}
+.logo b{color:var(--green);}
+.hpills{display:flex;gap:6px;}
+.pill{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:20px;letter-spacing:.06em;text-transform:uppercase;}
+.pill-g{background:rgba(34,211,160,.1);color:var(--green);border:1px solid rgba(34,211,160,.2);}
+.pill-b{background:rgba(91,138,240,.1);color:var(--blue);border:1px solid rgba(91,138,240,.2);}
+.pill-d{background:rgba(74,86,122,.12);color:var(--t3);border:1px solid var(--b2);}
+
+/* ── LAYOUT ─────────────────────────────────────── */
+.wrap{position:relative;z-index:1;max-width:1360px;margin:0 auto;padding:32px 32px 80px;}
+
+/* ── HERO ────────────────────────────────────────── */
+.hero{display:grid;grid-template-columns:1fr auto;align-items:center;gap:48px;padding:40px 44px;background:var(--s1);border:1px solid var(--b2);border-radius:var(--r2);margin-bottom:40px;position:relative;overflow:hidden;}
+.hero::after{content:'';position:absolute;top:-80px;right:-80px;width:300px;height:300px;background:radial-gradient(circle,rgba(34,211,160,.05) 0%,transparent 65%);pointer-events:none;}
+.hero-label{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;}
+.hero h1{font-family:var(--serif);font-size:36px;font-weight:400;line-height:1.15;margin-bottom:12px;}
+.hero h1 i{font-style:italic;color:var(--green);}
+.hero p{font-size:13px;color:var(--t2);line-height:1.8;max-width:500px;}
+.demo-cta{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.btn-run{font-family:var(--sans);font-size:14px;font-weight:600;padding:14px 34px;background:var(--green);color:#07090d;border:none;border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:9px;white-space:nowrap;transition:all .18s;}
+.btn-run:hover{background:#3af0b8;transform:translateY(-1px);box-shadow:0 6px 20px rgba(34,211,160,.22);}
+.btn-run svg{width:16px;height:16px;}
+.cta-note{font-family:var(--mono);font-size:10px;color:var(--t4);text-align:center;letter-spacing:.04em;}
+
+/* ── SECTION TITLES ──────────────────────────────── */
+.sec-hd{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.sec-num{font-family:var(--mono);font-size:10px;color:var(--green);background:var(--green-dim);border:1px solid rgba(34,211,160,.18);padding:2px 7px;border-radius:3px;}
+.sec-title{font-family:var(--serif);font-size:22px;font-weight:400;}
+.sec-sub{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-left:auto;}
+
+/* ── SNAPSHOT BAR ────────────────────────────────── */
+.snap-bar{display:flex;gap:6px;margin-bottom:28px;flex-wrap:wrap;}
+.snap-btn{font-family:var(--mono);font-size:11px;padding:7px 16px;background:var(--s1);color:var(--t3);border:1px solid var(--b2);border-radius:5px;cursor:pointer;letter-spacing:.05em;transition:all .15s;}
+.snap-btn:hover{color:var(--t2);border-color:var(--b3);}
+.snap-btn.active{background:var(--green-dim);border-color:rgba(34,211,160,.3);color:var(--green);}
+
+/* ── BLOCKS ──────────────────────────────────────── */
+.block{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r2);margin-bottom:16px;overflow:hidden;}
+.block-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--b1);cursor:pointer;user-select:none;}
+.block-hd-left{display:flex;align-items:center;gap:10px;}
+.block-tag{font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:3px;letter-spacing:.07em;text-transform:uppercase;}
+.tag-static{background:rgba(91,138,240,.1);color:var(--blue);border:1px solid rgba(91,138,240,.2);}
+.tag-hist{background:rgba(245,158,42,.1);color:var(--amber);border:1px solid rgba(245,158,42,.2);}
+.tag-curr{background:rgba(34,211,160,.1);color:var(--green);border:1px solid rgba(34,211,160,.2);}
+.tag-ia{background:rgba(167,139,250,.1);color:var(--purple);border:1px solid rgba(167,139,250,.2);}
+.block-title{font-size:13px;font-weight:500;color:var(--t1);}
+.block-meta{font-family:var(--mono);font-size:10px;color:var(--t3);}
+.chevron{width:14px;height:14px;color:var(--t3);transition:transform .2s;}
+.chevron.open{transform:rotate(180deg);}
+.block-body{padding:20px;display:none;}
+.block-body.open{display:block;}
+
+/* ── INPUT GRID ──────────────────────────────────── */
+.ig{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.ig-wide{grid-template-columns:repeat(auto-fill,minmax(240px,1fr));}
+.field{display:flex;flex-direction:column;gap:5px;}
+.field label{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.07em;text-transform:uppercase;}
+.field input,.field select{background:var(--s2);border:1px solid var(--b2);border-radius:5px;color:var(--t1);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;transition:border-color .15s,background .15s;}
+.field input:focus,.field select:focus{border-color:rgba(34,211,160,.4);background:var(--s3);}
+.field select option{background:var(--s2);}
+.field input.filled,.field select.filled{border-color:rgba(34,211,160,.25);background:rgba(34,211,160,.03);}
+@keyframes fillFlash{0%{box-shadow:0 0 0 2px rgba(34,211,160,.4)}100%{box-shadow:none}}
+.field input.flash,.field select.flash{animation:fillFlash .5s ease-out;}
+
+/* dividers inside grid */
+.ig-divider{grid-column:1/-1;display:flex;align-items:center;gap:10px;padding:6px 0;}
+.ig-divider span{font-family:var(--mono);font-size:9px;color:var(--t4);letter-spacing:.12em;text-transform:uppercase;white-space:nowrap;}
+.ig-divider hr{flex:1;border:none;border-top:1px solid var(--b1);}
+
+/* history sem card */
+.sem-cards{display:flex;flex-direction:column;gap:10px;}
+.sem-card{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);overflow:hidden;}
+.sem-card-hd{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;cursor:pointer;user-select:none;}
+.sem-card-label{font-family:var(--mono);font-size:11px;color:var(--amber);}
+.sem-card-body{padding:16px;display:none;}
+.sem-card-body.open{display:block;}
+.sem-add{font-family:var(--mono);font-size:11px;padding:8px 16px;background:transparent;color:var(--amber);border:1px dashed rgba(245,158,42,.3);border-radius:5px;cursor:pointer;width:100%;text-align:center;transition:all .15s;margin-top:10px;}
+.sem-add:hover{background:var(--amber-dim);border-style:solid;}
+.sem-remove{font-family:var(--mono);font-size:10px;padding:3px 8px;background:transparent;color:var(--red);border:1px solid rgba(240,74,106,.2);border-radius:3px;cursor:pointer;transition:all .15s;margin-left:8px;}
+.sem-remove:hover{background:var(--red-dim);}
+.binary-row{display:flex;gap:20px;margin-top:12px;flex-wrap:wrap;}
+.binary-item{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;color:var(--t2);cursor:pointer;}
+.binary-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--amber);}
+
+/* ── ACTION BAR ──────────────────────────────────── */
+.action-bar{display:flex;gap:10px;margin-bottom:40px;flex-wrap:wrap;align-items:center;}
+.btn{font-family:var(--sans);font-size:13px;font-weight:500;padding:10px 22px;border-radius:var(--r);border:none;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .17s;white-space:nowrap;}
+.btn-primary{background:var(--blue);color:#fff;}
+.btn-primary:hover{background:#7aa3f5;transform:translateY(-1px);}
+.btn-whatif{background:transparent;color:var(--amber);border:1px solid rgba(245,158,42,.3);}
+.btn-whatif:hover{background:var(--amber-dim);}
+.btn-traj{background:transparent;color:var(--purple);border:1px solid rgba(167,139,250,.3);}
+.btn-traj:hover{background:var(--purple-dim);}
+.btn-mc{background:transparent;color:var(--green);border:1px solid rgba(34,211,160,.3);}
+.btn-mc:hover{background:var(--green-dim);}
+.btn-ghost{background:transparent;color:var(--t3);border:1px solid var(--b2);}
+.btn-ghost:hover{color:var(--t2);border-color:var(--b3);}
+.spin{display:none;width:12px;height:12px;border:2px solid rgba(255,255,255,.2);border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading .spin{display:inline-block;}
+.loading .btn-icon{display:none;}
+
+/* ── RESULTS ─────────────────────────────────────── */
+.results{display:none;}
+.results.vis{display:block;animation:fadeUp .35s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* mode tabs */
+.mode-bar{display:flex;gap:2px;background:var(--s1);padding:3px;border-radius:var(--r);width:fit-content;border:1px solid var(--b1);margin-bottom:28px;}
+.mode-tab{font-family:var(--mono);font-size:11px;padding:7px 16px;border-radius:6px;cursor:pointer;color:var(--t3);border:none;background:transparent;transition:all .15s;letter-spacing:.04em;}
+.mode-tab:hover{color:var(--t2);}
+.mode-tab.active{background:var(--s2);color:var(--t1);box-shadow:0 1px 4px rgba(0,0,0,.5);}
+.mode-panel{display:none;}
+.mode-panel.active{display:block;}
+
+/* ── RESULT CARDS ────────────────────────────────── */
+.rcards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+.rcard{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);padding:22px;position:relative;overflow:hidden;}
+.rcard::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.rcard.rc-gpa::before{background:linear-gradient(90deg,var(--blue),transparent);}
+.rcard.rc-drop::before{background:linear-gradient(90deg,var(--red),transparent);}
+.rcard.rc-arch::before{background:linear-gradient(90deg,var(--green),transparent);}
+.rc-label{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;}
+.rc-val{font-family:var(--serif);font-size:40px;line-height:1;margin-bottom:6px;}
+.rc-val.v-gpa{color:var(--blue);}
+.rc-val.v-drop{color:var(--red);}
+.rc-val.v-arch{color:var(--green);font-size:24px;text-transform:capitalize;}
+.rc-sub{font-size:12px;color:var(--t2);}
+.risk-pill{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:20px;margin-top:8px;}
+.rp-low{background:rgba(34,211,160,.1);color:var(--green);border:1px solid rgba(34,211,160,.2);}
+.rp-moderate{background:rgba(245,158,42,.1);color:var(--amber);border:1px solid rgba(245,158,42,.2);}
+.rp-high{background:rgba(240,74,106,.1);color:var(--red);border:1px solid rgba(240,74,106,.2);}
+.rp-critical{background:rgba(240,74,106,.15);color:#ff6b86;border:1px solid rgba(240,74,106,.35);}
+
+/* carry readout */
+.carry-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+.carry-chip{font-family:var(--mono);font-size:10px;padding:5px 12px;background:var(--s2);border:1px solid var(--b2);border-radius:20px;color:var(--t2);}
+.carry-chip b{color:var(--amber);}
+
+/* ── CHARTS ──────────────────────────────────────── */
+.charts-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;}
+.cg-full{grid-column:1/-1;}
+.chart-card{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r2);padding:20px;}
+.chart-title{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:16px;}
+.chart-wrap{position:relative;}
+
+/* driver/advisory tags */
+.tag-list{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;}
+.dtag{font-family:var(--mono);font-size:11px;padding:4px 10px;border-radius:4px;}
+.dtag-risk{background:var(--red-dim);color:var(--red);border:1px solid rgba(240,74,106,.2);}
+.dtag-adv{background:var(--blue-dim);color:var(--blue);border:1px solid rgba(91,138,240,.15);font-family:var(--sans);}
+
+/* ── WHAT-IF ─────────────────────────────────────── */
+.wi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:18px;}
+.wi-card{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:16px;transition:border-color .15s;}
+.wi-card.positive{border-top:2px solid rgba(34,211,160,.4);}
+.wi-card.negative{border-top:2px solid rgba(240,74,106,.4);}
+.wi-card.best{border-color:rgba(34,211,160,.5);background:var(--green-dim);}
+.wi-card.worst{border-color:rgba(240,74,106,.4);}
+.wi-dir{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+.wi-dir.pos{color:var(--green);}
+.wi-dir.neg{color:var(--red);}
+.wi-name{font-family:var(--mono);font-size:10px;color:var(--t3);margin-bottom:8px;letter-spacing:.05em;}
+.wi-val{font-family:var(--serif);font-size:28px;color:var(--blue);}
+.wi-delta{font-family:var(--mono);font-size:11px;margin-top:4px;}
+.d-pos{color:var(--green);}
+.d-neg{color:var(--red);}
+.d-neu{color:var(--t3);}
+
+/* ── TRAJECTORY TABLE ────────────────────────────── */
+.traj-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:12px;}
+.traj-tbl th{text-align:left;padding:8px 14px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--b1);}
+.traj-tbl td{padding:11px 14px;border-bottom:1px solid var(--b1);}
+.traj-tbl tr:last-child td{border-bottom:none;}
+.traj-tbl tr.simulated td{color:var(--t2);}
+.traj-tbl .tc-gpa{color:var(--blue);font-weight:500;}
+.traj-tbl .tc-arch{color:var(--green);text-transform:capitalize;}
+.traj-tbl .tc-drop{color:var(--red);}
+
+/* ── MC BANDS ────────────────────────────────────── */
+.mc-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px;}
+.mc-stat{background:var(--s2);border:1px solid var(--b2);border-radius:var(--r);padding:16px;}
+.mc-stat-label{font-family:var(--mono);font-size:10px;color:var(--t3);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px;}
+.mc-stat-val{font-family:var(--serif);font-size:28px;}
+.mc-stat-sub{font-family:var(--mono);font-size:10px;color:var(--t3);margin-top:3px;}
+
+@media(max-width:900px){
+  .rcards,.charts-grid,.mc-stats{grid-template-columns:1fr;}
+  .cg-full{grid-column:1;}
+  .hero{grid-template-columns:1fr;} 
+  header{padding:12px 16px;}
+  .wrap{padding:20px 16px 60px;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  
+  <div class="logo">SP<b>I</b>S</div>
+  <div class="hpills">
+    <span class="pill pill-g">University</span>
+    <span class="pill pill-b">Carry Engine</span>
+    <span class="pill pill-d">Sem 1→8</span>
+  </div>
+</header>
+<div class="wrap">
+
+<!-- ── HERO ─────────────────────────────────────── -->
+<div class="hero">
+  <div>
+    <div class="hero-label">Student Performance Intelligence System</div>
+    <h1>Predict. Simulate.<br><i>Understand trajectories.</i></h1>
+    <p>Enter static enrollment data once, provide minimal history per past semester (just GPA + 3 binary flags), and the system reverse-engineers dynamic state. No guessing burnout scores.</p>
+  </div>
+  <div class="demo-cta">
+    <button class="btn-run" id="demoBtn" onclick="runDemo()">
+      <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span class="spin"></span>
+      Load Demo &amp; Predict
+    </button>
+    <span class="cta-note">loads sample student data → runs all modes</span>
+  </div>
+</div>
+
+<!-- ── SNAPSHOT ──────────────────────────────────── -->
+<div class="sec-hd">
+  <span class="sec-num">stage</span>
+  <span class="sec-title">Prediction Stage</span>
+</div>
+<div class="snap-bar">
+  <button class="snap-btn active" onclick="setSnap('before_ia',this)">Before IA</button>
+  <button class="snap-btn" onclick="setSnap('after_ia1',this)">After IA 1</button>
+  <button class="snap-btn" onclick="setSnap('after_ia2',this)">After IA 2</button>
+</div>
+
+<!-- ── SECTION 1: STATIC ──────────────────────────── -->
+<div class="sec-hd" style="margin-top:8px;">
+  <span class="sec-num">01</span>
+  <span class="sec-title">Static Features</span>
+  <span class="sec-sub">collected once at enrollment</span>
+</div>
+<div class="block" id="blk_static">
+  <div class="block-hd" onclick="toggleBlock('static')">
+    <div class="block-hd-left">
+      <span class="block-tag tag-static">Static</span>
+      <span class="block-title">Enrollment & Demographics</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="block-meta" id="meta_static">14 fields</span>
+      <svg class="chevron open" id="chev_static" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+  </div>
+  <div class="block-body open" id="body_static">
+    <div class="ig">
+      <div class="field"><label>Student ID</label><input id="s_Student_ID" placeholder="STU0001"/></div>
+      <div class="field"><label>Age</label><input id="s_Age" type="number" placeholder="20"/></div>
+      <div class="field"><label>Gender</label>
+        <select id="s_Gender"><option value="">—</option><option>Male</option><option>Female</option></select></div>
+      <div class="field"><label>Race</label>
+        <select id="s_Race"><option value="">—</option><option>White</option><option>Black</option><option>Hispanic</option><option>Asian</option><option>Other</option><option>Two-or-more</option></select></div>
+      <div class="field"><label>SES Quartile</label>
+        <select id="s_SES_Quartile"><option value="">—</option><option value="1">Q1 Low</option><option value="2">Q2</option><option value="3">Q3</option><option value="4">Q4 High</option></select></div>
+      <div class="field"><label>Parental Education</label>
+        <select id="s_ParentalEducation"><option value="">—</option><option value="&lt;HS">&lt;HS</option><option value="HS">HS</option><option value="SomeCollege">Some College</option><option value="Bachelors+">Bachelors+</option></select></div>
+      <div class="field"><label>School Type</label>
+        <select id="s_SchoolType"><option value="">—</option><option>Public</option><option>Private</option></select></div>
+      <div class="field"><label>Locale</label>
+        <select id="s_Locale"><option value="">—</option><option>City</option><option>Suburban</option><option>Town</option><option>Rural</option></select></div>
+      <div class="field"><label>Internet Access</label>
+        <select id="s_InternetAccess"><option value="1">Yes</option><option value="0">No</option></select></div>
+      <div class="field"><label>First Gen College</label>
+        <select id="s_first_generation_college_flag"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Study Env Score (1-10)</label><input id="s_study_environment_score" type="number" step=".1" placeholder="7.0"/></div>
+      <div class="field"><label>Commute Strain (1-3)</label><input id="s_Commute_Strain" type="number" placeholder="2"/></div>
+      <div class="field"><label>Procrastination (1-10)</label><input id="s_procrastination_tendency" type="number" step=".1" placeholder="4.0"/></div>
+      <div class="field"><label>Self Efficacy (1-10)</label><input id="s_self_efficacy_score" type="number" step=".1" placeholder="6.5"/></div>
+      <div class="field"><label>Goal Clarity (1-10)</label><input id="s_goal_clarity_survey_score" type="number" step=".1" placeholder="6.5"/></div>
+      <div class="field"><label>Motivation Survey (1-10)</label><input id="s_motivation_survey_score" type="number" step=".1" placeholder="6.5"/></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 2: HISTORY ─────────────────────────── -->
+<div class="sec-hd" style="margin-top:8px;">
+  <span class="sec-num">02</span>
+  <span class="sec-title">Semester History</span>
+  <span class="sec-sub">minimal recall — GPA + 3 binary flags per sem</span>
+</div>
+<div class="block" id="blk_hist">
+  <div class="block-hd" onclick="toggleBlock('hist')">
+    <div class="block-hd-left">
+      <span class="block-tag tag-hist">History</span>
+      <span class="block-title">Past Semesters</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="block-meta" id="meta_hist">0 semesters</span>
+      <svg class="chevron open" id="chev_hist" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+  </div>
+  <div class="block-body open" id="body_hist">
+    <div class="sem-cards" id="semCards"></div>
+    <button class="sem-add" onclick="addSemCard()">+ Add Past Semester</button>
+    <p style="font-family:var(--mono);font-size:10px;color:var(--t4);margin-top:10px;">
+      Carry state (Dynamic_Motivation, Dynamic_Confidence, Dynamic_Burnout, Archetype_Prev) is reverse-engineered from this history — never asked from you directly.
+    </p>
+  </div>
+</div>
+
+<!-- ── SECTION 3: CURRENT ─────────────────────────── -->
+<div class="sec-hd" style="margin-top:8px;">
+  <span class="sec-num">03</span>
+  <span class="sec-title">Current Semester</span>
+  <span class="sec-sub" id="currSemLabel">Semester 1</span>
+</div>
+<div class="block" id="blk_curr">
+  <div class="block-hd" onclick="toggleBlock('curr')">
+    <div class="block-hd-left">
+      <span class="block-tag tag-curr">Current</span>
+      <span class="block-title">Behavioral & Survey Inputs</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="block-meta">18 fields</span>
+      <svg class="chevron open" id="chev_curr" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+  </div>
+  <div class="block-body open" id="body_curr">
+    <div class="ig">
+      <div class="ig-divider"><span>Academic</span><hr/></div>
+      <div class="field"><label>Attendance Rate (0.1-1.0)</label><input id="c_AttendanceRate" type="number" min="0.1" max="1.0" step=".01" placeholder="0.85"/></div>
+      <div class="field"><label>Study Hours / week</label><input id="c_StudyHours" type="number" step=".1" placeholder="3.5"/></div>
+      <div class="field"><label>Effort Score (0-1)</label><input id="c_Effort_Score" type="number" step=".01" placeholder="0.68"/></div>
+      <div class="field"><label>Cumul. GPA (0-10)</label><input id="c_GPA" type="number" step=".01" placeholder="7.0"/></div>
+
+      <div class="ig-divider"><span>Lifestyle</span><hr/></div>
+      <div class="field"><label>Extracurricular</label><select id="c_Extracurricular"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Part-Time Job</label><select id="c_PartTimeJob"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Parent Support (0-4)</label><input id="c_ParentSupport" type="number" placeholder="2"/></div>
+      <div class="field"><label>Romantic Relationship</label><select id="c_Romantic"><option value="0">No</option><option value="1">Yes</option></select></div>
+      <div class="field"><label>Free Time (1-5)</label><input id="c_FreeTime" type="number" placeholder="3"/></div>
+      <div class="field"><label>Go Out (1-5)</label><input id="c_GoOut" type="number" placeholder="2"/></div>
+      <div class="field"><label>Social Distraction (0-1)</label><input id="c_Social_Distraction" type="number" step=".01" placeholder="0.35"/></div>
+
+      <div class="ig-divider"><span>Wellbeing Survey</span><hr/></div>
+      <div class="field"><label>Sleep Hours</label><input id="c_sleep_hours" type="number" step=".1" placeholder="6.8"/></div>
+      <div class="field"><label>Exam Anxiety (1-10)</label><input id="c_exam_anxiety_score" type="number" step=".1" placeholder="5.0"/></div>
+      <div class="field"><label>Motivation (1-10)</label><input id="c_motivation_survey_score" type="number" step=".1" placeholder="6.5"/></div>
+      <div class="field"><label>Stress (1-10)</label><input id="c_stress_survey_score" type="number" step=".1" placeholder="5.5"/></div>
+
+      <div class="ig-divider"><span>Events</span><hr/></div>
+      <div class="field"><label>Shock Event</label>
+        <select id="c_Shock_Event">
+          <option value="none">None</option>
+          <option value="family_issue">Family Issue</option>
+          <option value="health_problem">Health Problem</option>
+          <option value="financial_stress">Financial Stress</option>
+          <option value="breakup">Breakup</option>
+          <option value="bereavement">Bereavement</option>
+          <option value="competition_success">Competition Win</option>
+          <option value="scholarship_award">Scholarship Award</option>
+          <option value="mentorship_start">Mentorship Start</option>
+          <option value="academic_achievement">Academic Achievement</option>
+          <option value="part_time_job_increase">Job Increase</option>
+        </select></div>
+      <div class="field"><label>Shock Magnitude (0-3)</label><input id="c_Shock_Magnitude" type="number" min="0" max="3" step=".1" placeholder="0.0"/></div>
+      <div class="field"><label>Intervention Applied</label>
+        <select id="c_Intervention_Applied">
+          <option value="none">None</option>
+          <option value="academic_warning">Academic Warning</option>
+          <option value="counseling">Counseling</option>
+          <option value="mentorship">Mentorship</option>
+          <option value="peer_tutoring">Peer Tutoring</option>
+        </select></div>
+      <div class="field"><label>Intervention Active</label><select id="c_Intervention_Active"><option value="0">No</option><option value="1">Yes</option></select></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── SECTION 4: IA SCORES ───────────────────────── -->
+<div class="block" id="blk_ia" style="display:none;">
+  <div class="block-hd" onclick="toggleBlock('ia')">
+    <div class="block-hd-left">
+      <span class="block-tag tag-ia">Graded</span>
+      <span class="block-title" id="ia_title">IA Scores</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="block-meta" id="meta_ia">admin entry</span>
+      <svg class="chevron open" id="chev_ia" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg>
+    </div>
+  </div>
+  <div class="block-body open" id="body_ia">
+    <div class="ig">
+      <div class="field"><label>IA1 Score (0-20)</label><input id="ia_IA1_Score" type="number" step=".1" placeholder="14.0"/></div>
+      <div class="field"><label>Backlog Count</label><input id="ia_Backlog_Count" type="number" placeholder="1"/></div>
+      <div class="field"><label>Assignment Ratio (0-1)</label><input id="ia_Assignment_Ratio" type="number" step=".01" placeholder="0.85"/></div>
+      <div class="field ia2-only" style="display:none;"><label>IA2 Score (0-20)</label><input id="ia_IA2_Score" type="number" step=".1" placeholder="15.5"/></div>
+      <div class="field ia2-only" style="display:none;"><label>Performance Delta</label><input id="ia_Performance_Delta" type="number" step=".1" placeholder="1.5"/></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── ACTION BAR ─────────────────────────────────── -->
+<div class="action-bar" style="margin-top:20px;">
+  <button class="btn btn-primary" id="btnPredict" onclick="doPredictAll()">
+    <span class="spin"></span>
+    <svg class="btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 8 12 12 14 14"/></svg>
+    Predict All
+  </button>
+  <button class="btn btn-whatif" id="btnWhatif" onclick="doWhatif()">
+    <span class="spin"></span>
+    <span class="btn-icon">⚡</span>
+    What-If Scenarios
+  </button>
+  <button class="btn btn-traj" id="btnTraj" onclick="doTrajectory()">
+    <span class="spin"></span>
+    <span class="btn-icon">→</span>
+    Trajectory
+  </button>
+  <button class="btn btn-mc" id="btnMC" onclick="doMonteCarlo()">
+    <span class="spin"></span>
+    <span class="btn-icon">∿</span>
+    Monte Carlo
+  </button>
+  <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+</div>
+
+<!-- ── RESULTS ────────────────────────────────────── -->
+<div class="results" id="results">
+  <div class="sec-hd">
+    <span class="sec-num">04</span>
+    <span class="sec-title">Results</span>
+  </div>
+
+  <!-- carry readout -->
+  <div class="carry-row" id="carryRow" style="display:none;"></div>
+
+  <!-- mode tabs -->
+  <div class="mode-bar">
+    <button class="mode-tab active" onclick="showMode('stage',this)">Stage</button>
+    <button class="mode-tab" onclick="showMode('whatif',this)">What-If</button>
+    <button class="mode-tab" onclick="showMode('traj',this)">Trajectory</button>
+    <button class="mode-tab" onclick="showMode('mc',this)">Monte Carlo</button>
+  </div>
+
+  <!-- stage panel -->
+  <div class="mode-panel active" id="panel_stage">
+    <div class="rcards">
+      <div class="rcard rc-gpa">
+        <div class="rc-label">GPA Prediction</div>
+        <div class="rc-val v-gpa" id="r_gpa">—</div>
+        <div class="rc-sub" id="r_gpa_sub">/ 10.0 scale</div>
+        <div id="r_gpa_badge"></div>
+      </div>
+      <div class="rcard rc-drop">
+        <div class="rc-label">Dropout Risk</div>
+        <div class="rc-val v-drop" id="r_drop">—</div>
+        <div class="rc-sub" id="r_drop_sub">probability</div>
+        <div id="r_drop_badge"></div>
+      </div>
+      <div class="rcard rc-arch">
+        <div class="rc-label">Student Archetype</div>
+        <div class="rc-val v-arch" id="r_arch">—</div>
+        <div class="rc-sub" id="r_arch_sub">predicted profile</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">GPA Context</div>
+        <div class="chart-wrap" style="height:190px"><canvas id="c_gpa"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Archetype Probabilities</div>
+        <div class="chart-wrap" style="height:190px"><canvas id="c_arch"></canvas></div>
+      </div>
+      <div class="chart-card cg-full">
+        <div class="chart-title">Risk Drivers &amp; Advisory</div>
+        <div class="chart-wrap" style="height:140px"><canvas id="c_risk"></canvas></div>
+        <div class="tag-list" id="r_drivers"></div>
+        <div class="tag-list" style="margin-top:8px;" id="r_advisory"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- whatif panel -->
+  <div class="mode-panel" id="panel_whatif">
+    <div class="wi-grid" id="wiGrid"></div>
+    <div class="chart-card">
+      <div class="chart-title">GPA Comparison — Baseline vs Scenarios</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="c_wi"></canvas></div>
+    </div>
+  </div>
+
+  <!-- trajectory panel -->
+  <div class="mode-panel" id="panel_traj">
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title" id="traj_gpa_title">GPA Trajectory</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c_traj_gpa"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Dropout Risk Trajectory</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c_traj_drop"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Semester Breakdown</div>
+      <table class="traj-tbl" id="trajTable">
+        <thead><tr>
+          <th>Sem</th><th>Type</th><th>GPA</th><th>Dropout %</th><th>Archetype</th><th>Risk</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- monte carlo panel -->
+  <div class="mode-panel" id="panel_mc">
+    <div class="mc-stats" id="mcStats"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">GPA Distribution (mean ± p10–p90)</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c_mc_gpa"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Dropout Risk Distribution</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="c_mc_drop"></canvas></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end wrap -->
+
+<script>
+    const API_BASE_URL = 'http://127.0.0.1:5001'; 
+    let charts = {};
+    let currentStage = 'before_ia';
+    
+    // Store student data globally so WhatIf/Trajectory can reuse it
+    let currentStudentData = {
+        snapshot: 'before_ia', static: {}, history: [], current: {}, task: 'gpa'
+    }; 
+
+    const ARCH_COLORS = {
+        'elite':'#22d3a0', 'fading_star':'#f59e2a', 'late_bloomer':'#5b8af0',
+        'disengaged':'#f04a6a', 'pragmatist':'#a78bfa', 'vulnerable':'#fb923c', 'dropped_out':'#4a567a'
+    };
+
+    function toggleBlock(id) {
+        const body = document.getElementById('body_' + id);
+        const chev = document.getElementById('chev_' + id);
+        body.classList.toggle('open');
+        chev.classList.toggle('open');
+    }
+
+    function showMode(mode, btn) {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+        document.getElementById('panel_' + mode).classList.add('active');
+    }
+
+    function setSnap(stage, btn) {
+        currentStage = stage;
+        document.querySelectorAll('.snap-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const iaBlock = document.getElementById('blk_ia');
+        const ia2Fields = document.querySelectorAll('.ia2-only');
+        const iaTitle = document.getElementById('ia_title');
+        
+        if (stage === 'before_ia') {
+            iaBlock.style.display = 'none';
+        } else if (stage === 'after_ia1') {
+            iaBlock.style.display = 'block';
+            iaTitle.textContent = 'IA1 Scores';
+            ia2Fields.forEach(el => el.style.display = 'none');
+        } else if (stage === 'after_ia2') {
+            iaBlock.style.display = 'block';
+            iaTitle.textContent = 'IA1 + IA2 Scores';
+            ia2Fields.forEach(el => el.style.display = 'flex');
+        }
+    }
+
+    function destroyChart(k){ 
+        if(charts[k]){ charts[k].destroy(); delete charts[k]; } 
+    }
+    
+    function riskClass(tier){
+        return {'Low Risk':'rp-low','Moderate Risk':'rp-moderate','High Risk':'rp-high','Critical Risk':'rp-critical'}[tier]||'rp-low';
+    }
+
+    function riskPill(tier){
+        return `<span class="risk-pill ${riskClass(tier)}">${tier}</span>`;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // DEMO AUTO FILL (Abridged)
+    // ══════════════════════════════════════════════════════════════
+    function runDemo() {
+        document.getElementById('s_Student_ID').value = 'STU2045';
+        document.getElementById('inputSemester').value = '3';
+        document.getElementById('inputPrevGPA').value = '7.5';
+        document.getElementById('inputAttendance').value = '85.0';
+        document.getElementById('c_AttendanceRate').value = '0.85';
+        document.getElementById('c_StudyHours').value = '4.0';
+        document.getElementById('s_motivation_survey_score').value = '6.5';
+        document.getElementById('c_Extracurricular').value = '1';
+        
+        const firstBtn = document.querySelector('.snap-btn');
+        setSnap('before_ia', firstBtn);
+        doPredictAll();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // CORE PREDICTION
+    // ══════════════════════════════════════════════════════════════
+    async function doPredictAll() {
+        document.getElementById('results').classList.add('vis');
+        document.getElementById('btnPredict').classList.add('loading');
+        
+        try {
+            const payload = {
+                snapshot: currentStage,
+                static: collectStatic(),
+                history: collectHistory(),
+                current: collectCurrent()
+            };
+            currentStudentData = { ...payload };
+
+            // Request the FULL profile so we can draw all charts
+            const res = await fetch(`${API_BASE_URL}/predict/full_profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            if(data.error) throw new Error(data.error);
+            
+            // Map JSON response to UI
+            updateDashboard(data);
+
+        } catch (e) {
+            alert("⚠️ Prediction Error: " + e.message);
+        } finally {
+            document.getElementById('btnPredict').classList.remove('loading');
+        }
+    }
+    
+    function updateDashboard(r) {
+        // Carry Readout
+        const cr = document.getElementById('carryRow');
+        const cState = r.carry_state_computed;
+        cr.style.display='flex';
+        cr.innerHTML=`
+          <span class="carry-chip">Sem <b>${cState.semester}</b></span>
+          <span class="carry-chip">Motivation <b>${cState.Dynamic_Motivation.toFixed(1)}</b></span>
+          <span class="carry-chip">Confidence <b>${cState.Dynamic_Confidence.toFixed(1)}</b></span>
+          <span class="carry-chip">Burnout <b>${cState.Dynamic_Burnout.toFixed(1)}</b></span>
+          <span class="carry-chip">Prev GPA <b>${cState.Prev_GPA.toFixed(2)}</b></span>
+          <span class="carry-chip">Archetype Prev <b>${cState.Archetype_Prev.replace(/_/g,' ')}</b></span>`;
+
+        // Metric Cards
+        const gpa = r.summary.GPA_Predicted;
+        const drop = r.summary.Dropout_Probability;
+        const tier = r.summary.Overall_Risk_Tier;
+        
+        document.getElementById('r_gpa').textContent = gpa.toFixed(2);
+        document.getElementById('r_gpa_sub').textContent= `/ 10.0  •  ${tier}`;
+        document.getElementById('r_drop').textContent = (drop*100).toFixed(1)+'%';
+        document.getElementById('r_drop_sub').textContent = `threshold 0.30  •  ${drop>=0.3?'⚠ Flagged':'✓ Safe'}`;
+        document.getElementById('r_arch').textContent = r.summary.Archetype.replace(/_/g,' ');
+        document.getElementById('r_gpa_badge').innerHTML = riskPill(tier);
+        document.getElementById('r_drop_badge').innerHTML = riskPill(tier);
+
+        // Drivers & Advisory
+        const drivers = r.gpa.Key_Risk_Drivers || [];
+        const adv = r.gpa.Advisory_Notes || [];
+        
+        document.getElementById('r_drivers').innerHTML = drivers.map(d=>`<span class="dtag dtag-risk">${d}</span>`).join('') || '<span style="font-family:var(--mono);font-size:10px;color:var(--t4)">No significant risk drivers</span>';
+        document.getElementById('r_advisory').innerHTML = adv.map(a=>`<span class="dtag dtag-adv">${a}</span>`).join('');
+
+        // 1. GPA Chart
+        destroyChart('gpa');
+        const cg = document.getElementById('c_gpa').getContext('2d');
+        charts['gpa'] = new Chart(cg,{
+          type:'bar',
+          data:{labels:['Prev GPA','Predicted','Max (10)'],
+                datasets:[{data:[cState.Prev_GPA, gpa, 10], backgroundColor:['rgba(74,86,122,.35)','rgba(91,138,240,.65)','rgba(255,255,255,.04)'], borderColor:['#4a567a','#5b8af0','#1c2333'], borderWidth:1, borderRadius:4}]},
+          options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{grid:{color:'#1c2333'}, ticks:{color:'#4a567a'}}, y:{min:0, max:10, grid:{color:'#1c2333'}, ticks:{color:'#4a567a'}}}}
+        });
+
+        // 2. Archetype Chart
+        destroyChart('arch');
+        const ca = document.getElementById('c_arch').getContext('2d');
+        const probsObj = r.archetype.Archetype_Probabilities;
+        const archLabels = Object.keys(probsObj).map(k=>k.replace('_',' '));
+        const archVals = Object.values(probsObj).map(v=>parseFloat((v*100).toFixed(1)));
+        const archColors = Object.keys(probsObj).map(k=>ARCH_COLORS[k]||'#4a567a');
+        charts['arch'] = new Chart(ca,{
+          type:'doughnut',
+          data:{labels:archLabels, datasets:[{data:archVals, backgroundColor:archColors.map(c=>c+'99'), borderColor:archColors, borderWidth:1.5}]},
+          options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'right', labels:{color:'#8494b0', font:{size:10}, boxWidth:10}}}}
+        });
+
+        // 3. Risk Chart
+        if(drivers.length){
+          destroyChart('risk');
+          const cr = document.getElementById('c_risk').getContext('2d');
+          charts['risk'] = new Chart(cr,{
+            type:'bar',
+            data:{labels:drivers, datasets:[{data:drivers.map(()=>0.7), backgroundColor:'rgba(240,74,106,.35)', borderColor:'#f04a6a', borderWidth:1, borderRadius:3}]},
+            options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{min:0, max:1, grid:{color:'#1c2333'}, ticks:{color:'#4a567a'}}, y:{grid:{display:false}, ticks:{color:'#e8edf5'}}}}
+          });
+        }
+        showMode('stage', document.querySelector('.mode-tab[onclick*="stage"]'));
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // ADVANCED SIMULATIONS
+    // ══════════════════════════════════════════════════════════════
+    async function doWhatif() {
+        document.getElementById('btnWhatif').classList.add('loading');
+        try {
+            const payload = {
+                snapshot: currentStudentData.snapshot,
+                task: "gpa",
+                static: currentStudentData.static,
+                history: currentStudentData.history,
+                current: currentStudentData.current
+                // Removed 'scenarios' to allow the backend to run all default scenarios
+            };
+            
+            const res = await fetch(`${API_BASE_URL}/predict/whatif`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            
+            // Build UI
+            const wiGrid = document.getElementById('wiGrid');
+            wiGrid.innerHTML = '';
+            
+            // Baseline
+            wiGrid.innerHTML += `<div class="wi-card baseline" style="border-top:2px solid var(--t3)">
+                <div class="wi-dir" style="color:var(--t3)">BASELINE</div>
+                <div class="wi-name">current trajectory</div>
+                <div class="wi-val">${data.baseline.GPA_Predicted.toFixed(2)}</div>
+                <div class="wi-delta d-neu">—</div></div>`;
+                
+            // Scenarios
+            data.ranked_best_to_worst.forEach(sc => {
+                const r = data.scenarios[sc];
+                const d = r.delta_vs_baseline.GPA_Delta;
+                const isPos = r.direction === 'positive';
+                wiGrid.innerHTML += `<div class="wi-card ${isPos ? 'positive' : 'negative'}">
+                    <div class="wi-dir ${isPos ? 'pos' : 'neg'}">${r.direction}</div>
+                    <div class="wi-name">${sc.replace(/_/g,' ')}</div>
+                    <div class="wi-val">${r.GPA_Predicted.toFixed(2)}</div>
+                    <div class="wi-delta ${isPos ? 'd-pos' : 'd-neg'}">${isPos?'+':''}${d.toFixed(2)} GPA</div></div>`;
+            });
+            showMode('whatif', document.querySelector('.mode-tab[onclick*="whatif"]'));
+        } catch (e) { alert('⚠️ What-If Failed: ' + e.message); } 
+        finally { document.getElementById('btnWhatif').classList.remove('loading'); }
+    }
+
+    async function doTrajectory() {
+        document.getElementById('btnTraj').classList.add('loading');
+        try {
+            const res = await fetch(`${API_BASE_URL}/predict/trajectory`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(currentStudentData)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            
+            const traj = data.trajectory;
+            const sems = traj.map(t => 'Sem ' + t.semester);
+
+            document.getElementById('traj_gpa_title').textContent = `GPA Trajectory — Sem ${data.current_semester} → 8`;
+
+            destroyChart('tgpa');
+            const ctg = document.getElementById('c_traj_gpa').getContext('2d');
+            charts['tgpa'] = new Chart(ctg,{
+              type:'line',
+              data:{labels:sems, datasets:[{label:'GPA', data:traj.map(t=>t.GPA_Predicted), borderColor:'#5b8af0', backgroundColor:'rgba(91,138,240,.08)', borderWidth:2, fill:true, tension:.35, pointBackgroundColor:traj.map(t=>t.data_type==='observed'?'#22d3a0':'#5b8af0'), pointRadius:5}]},
+              options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{min:0, max:10, grid:{color:'#1c2333'}}}}
+            });
+
+            destroyChart('tdrop');
+            const ctd = document.getElementById('c_traj_drop').getContext('2d');
+            charts['tdrop'] = new Chart(ctd,{
+              type:'line',
+              data:{labels:sems, datasets:[
+                {label:'Risk', data:traj.map(t=>t.Dropout_Probability), borderColor:'#f04a6a', backgroundColor:'rgba(240,74,106,.07)', fill:true, tension:.35},
+                {label:'Threshold', data:traj.map(()=>0.30), borderColor:'rgba(245,158,42,.4)', borderDash:[4,4], pointRadius:0}
+              ]},
+              options:{responsive:true, maintainAspectRatio:false}
+            });
+
+            document.querySelector('#trajTable tbody').innerHTML = traj.map(t => `
+              <tr class="${t.data_type}">
+                <td>${t.semester}</td>
+                <td><span class="pill ${t.data_type==='observed'?'pill-g':'pill-d'}">${t.data_type}</span></td>
+                <td class="tc-gpa">${t.GPA_Predicted.toFixed(2)}</td>
+                <td class="tc-drop">${(t.Dropout_Probability*100).toFixed(1)}%</td>
+                <td class="tc-arch">${t.Archetype.replace(/_/g,' ')}</td>
+                <td>${riskPill(t.Risk_Tier)}</td>
+              </tr>`).join('');
+
+            showMode('traj', document.querySelector('.mode-tab[onclick*="traj"]'));
+        } catch (e) { alert('⚠️ Trajectory Failed: ' + e.message); }
+        finally { document.getElementById('btnTraj').classList.remove('loading'); }
+    }
+
+    async function doMonteCarlo() {
+        document.getElementById('btnMC').classList.add('loading');
+        try {
+            const payload = { ...currentStudentData, n_runs: 100, noise_std: 0.25 };
+            const res = await fetch(`${API_BASE_URL}/predict/montecarlo`, {
+                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+            });
+            if (!res.ok) throw new Error(await res.text());
+            const data = await res.json();
+            
+            const summ = data.summary;
+            document.getElementById('mcStats').innerHTML=`
+              <div class="mc-stat"><div class="mc-stat-label">Final GPA Mean</div><div class="mc-stat-val" style="color:var(--blue)">${summ.GPA_final_mean.toFixed(2)}</div><div class="mc-stat-sub">±${summ.GPA_final_std.toFixed(2)} std</div></div>
+              <div class="mc-stat"><div class="mc-stat-label">GPA Range P10–P90</div><div class="mc-stat-val" style="color:var(--blue);font-size:20px">${summ.GPA_final_p10_p90[0]}–${summ.GPA_final_p10_p90[1]}</div><div class="mc-stat-sub">80% confidence band</div></div>
+              <div class="mc-stat"><div class="mc-stat-label">Dropout Risk (final)</div><div class="mc-stat-val" style="color:var(--red)">${(summ.dropout_risk_mean*100).toFixed(1)}%</div><div class="mc-stat-sub">mean probability</div></div>
+              <div class="mc-stat"><div class="mc-stat-label">Dropout Any Sem</div><div class="mc-stat-val" style="color:${summ.prob_dropout_any_sem>.5?'var(--red)':'var(--amber)'};">${(summ.prob_dropout_any_sem*100).toFixed(0)}%</div><div class="mc-stat-sub">fraction of ${data.n_runs} runs</div></div>`;
+
+            const sems = data.per_semester.map(s => 'Sem ' + s.semester);
+            
+            destroyChart('mcgpa');
+            const cmg = document.getElementById('c_mc_gpa').getContext('2d');
+            charts['mcgpa'] = new Chart(cmg,{
+              type:'line',
+              data:{labels:sems, datasets:[
+                {label:'P90', data:data.per_semester.map(s=>s.GPA.p90), borderColor:'rgba(91,138,240,.15)', fill:'+1', backgroundColor:'rgba(91,138,240,.1)', pointRadius:0},
+                {label:'Mean', data:data.per_semester.map(s=>s.GPA.mean), borderColor:'#5b8af0', borderWidth:2, fill:false, tension:.35, pointRadius:3},
+                {label:'P10', data:data.per_semester.map(s=>s.GPA.p10), borderColor:'rgba(91,138,240,.15)', fill:false, pointRadius:0}
+              ]},
+              options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:10, grid:{color:'#1c2333'}}}}
+            });
+
+            destroyChart('mcdrop');
+            const cmd = document.getElementById('c_mc_drop').getContext('2d');
+            charts['mcdrop'] = new Chart(cmd,{
+              type:'line',
+              data:{labels:sems, datasets:[
+                {label:'P90', data:data.per_semester.map(s=>s.Dropout_Probability.p90), borderColor:'rgba(240,74,106,.15)', fill:'+1', backgroundColor:'rgba(240,74,106,.1)', pointRadius:0},
+                {label:'Mean', data:data.per_semester.map(s=>s.Dropout_Probability.mean), borderColor:'#f04a6a', borderWidth:2, fill:false, tension:.35},
+                {label:'P10', data:data.per_semester.map(s=>s.Dropout_Probability.p10), borderColor:'rgba(240,74,106,.15)', fill:false, pointRadius:0},
+              ]},
+              options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:1, grid:{color:'#1c2333'}}}}
+            });
+            showMode('mc', document.querySelector('.mode-tab[onclick*="mc"]'));
+        } catch (e) { alert('⚠️ Monte Carlo Failed: ' + e.message); }
+        finally { document.getElementById('btnMC').classList.remove('loading'); }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // HELPER FUNCTIONS (Collect Data)
+    // ══════════════════════════════════════════════════════════════
+    function collectStatic(){
+        const ids=['Student_ID','Age','Gender','Race','SES_Quartile','ParentalEducation','SchoolType','Locale','InternetAccess','first_generation_college_flag','study_environment_score','Commute_Strain','procrastination_tendency','self_efficacy_score','goal_clarity_survey_score','motivation_survey_score'];
+        const o={};
+        ids.forEach(id=>{
+            const el=document.getElementById('s_'+id);
+            if(el) o[id]=(['Student_ID','Gender','Race','ParentalEducation','SchoolType','Locale'].includes(id))?el.value:parseFloat(el.value)||0;
+        });
+        return o;
+    }
+    
+    function collectHistory(){
+        const cards = document.querySelectorAll('.sem-card');
+        const hist = [];
+        cards.forEach(c=>{
+            const idx = c.dataset.idx;
+            hist.push({
+                final_gpa: parseFloat(document.getElementById('sc_gpa_'+idx).value)||0,
+                Shock_Event: document.getElementById('sc_shock_'+idx).value,
+                Intervention_Active: document.getElementById('sc_intv_'+idx).checked?1:0,
+                high_social: document.getElementById('sc_hs_'+idx).checked,
+                high_freetime: document.getElementById('sc_hf_'+idx).checked,
+                Romantic: document.getElementById('sc_rom_'+idx).checked,
+            });
+        });
+        return hist;
+    }
+    
+    function collectCurrent(){
+        const ids=['AttendanceRate','StudyHours','Effort_Score','GPA','Extracurricular','PartTimeJob','ParentSupport','Romantic','FreeTime','GoOut','Social_Distraction','sleep_hours','exam_anxiety_score','motivation_survey_score','stress_survey_score','Shock_Event','Shock_Magnitude','Intervention_Applied','Intervention_Active'];
+        const o={};
+        ids.forEach(id=>{
+            const el=document.getElementById('c_'+id);
+            if(el) o[id]=(['Shock_Event','Intervention_Applied'].includes(id))?el.value:parseFloat(el.value)||0;
+        });
+        if(currentStage!=='before_ia'){
+            ['IA1_Score','Backlog_Count','Assignment_Ratio'].forEach(id=>{
+                const el=document.getElementById('ia_'+id);
+                if(el) o[id]=parseFloat(el.value)||0;
+            });
+        }
+        if(currentStage==='after_ia2'){
+            ['IA2_Score','Performance_Delta'].forEach(id=>{
+                const el=document.getElementById('ia_'+id);
+                if(el) o[id]=parseFloat(el.value)||0;
+            });
+        }
+        return o;
+    }
+
+    let semIdx = 0;
+    function addSemCard(data=null){
+        semIdx++;
+        const idx = semIdx;
+        const n = document.querySelectorAll('.sem-card').length + 1;
+        const card = document.createElement('div');
+        card.className='sem-card'; card.dataset.idx=idx;
+        const shock = data ? data.Shock_Event||'none' : 'none';
+        const intv  = data ? (data.Intervention_Active?'checked':'') : '';
+        const hs    = data ? (data.high_social?'checked':'') : '';
+        const hf    = data ? (data.high_freetime?'checked':'') : '';
+        const rom   = data ? (data.Romantic?'checked':'') : '';
+        const gpa   = data ? data.final_gpa||'' : '';
+
+        card.innerHTML = `<div class="sem-card-hd" onclick="toggleSemCard(this)"><span class="sem-card-label">Semester ${n}</span><div style="display:flex;align-items:center;"><span style="font-family:var(--mono);font-size:10px;color:var(--t3);" id="sc_meta_${idx}">GPA: —</span><button class="sem-remove" onclick="removeSemCard(event,${idx})">✕</button><svg style="width:12px;height:12px;color:var(--t3);margin-left:8px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"/></svg></div></div><div class="sem-card-body open" id="sc_body_${idx}"><div class="ig ig-wide"><div class="field"><label>Final GPA (transcript)</label><input id="sc_gpa_${idx}" type="number" step=".01" placeholder="6.5" value="${gpa}" oninput="document.getElementById('sc_meta_${idx}').textContent='GPA: '+this.value"/></div><div class="field"><label>Shock Event</label><select id="sc_shock_${idx}"><option value="none"${shock==='none'?' selected':''}>None</option><option value="family_issue"${shock==='family_issue'?' selected':''}>Family Issue</option><option value="health_problem"${shock==='health_problem'?' selected':''}>Health Problem</option><option value="financial_stress"${shock==='financial_stress'?' selected':''}>Financial Stress</option><option value="breakup"${shock==='breakup'?' selected':''}>Breakup</option><option value="bereavement"${shock==='bereavement'?' selected':''}>Bereavement</option><option value="competition_success"${shock==='competition_success'?' selected':''}>Competition Win</option><option value="scholarship_award"${shock==='scholarship_award'?' selected':''}>Scholarship</option><option value="mentorship_start"${shock==='mentorship_start'?' selected':''}>Mentorship Start</option><option value="academic_achievement"${shock==='academic_achievement'?' selected':''}>Academic Achievement</option><option value="part_time_job_increase"${shock==='part_time_job_increase'?' selected':''}>Job Increase</option></select></div></div><div class="binary-row"><label class="binary-item"><input type="checkbox" id="sc_intv_${idx}" ${intv}/> Intervention was active</label><label class="binary-item"><input type="checkbox" id="sc_hs_${idx}" ${hs}/> High social distraction</label><label class="binary-item"><input type="checkbox" id="sc_hf_${idx}" ${hf}/> Lots of free time</label><label class="binary-item"><input type="checkbox" id="sc_rom_${idx}" ${rom}/> In a relationship</label></div></div>`;
+        document.getElementById('semCards').appendChild(card);
+        updateHistMeta();
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // DEMO AUTO FILL (Restored and Mapped to Correct UI IDs)
+    // ══════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════
+    // DYNAMIC DEMO GENERATOR (Randomized per Research Bounds)
+    // ══════════════════════════════════════════════════════════════
+    function runDemo() {
+        const btn = document.getElementById('demoBtn');
+        btn.classList.add('loading');
+
+        // Helper for random selection
+        const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+        const num = (min, max, dec = 1) => parseFloat((Math.random() * (max - min) + min).toFixed(dec));
+
+        // 1. Static Profile
+        document.getElementById('s_Student_ID').value = 'STU' + Math.floor(Math.random()*9000 + 1000);
+        document.getElementById('s_Age').value = Math.floor(num(18, 24, 0));
+        document.getElementById('s_Gender').value = pick(['Male', 'Female', 'Non-binary']);
+        document.getElementById('s_Race').value = pick(['Asian', 'White', 'Black', 'Hispanic', 'Other']);
+        document.getElementById('s_SES_Quartile').value = pick(['1', '2', '3', '4']);
+        document.getElementById('s_ParentalEducation').value = pick(['High School', 'Associates', 'Bachelors', 'Bachelors+', 'None']);
+        document.getElementById('s_SchoolType').value = pick(['Public', 'Private']);
+        document.getElementById('s_Locale').value = pick(['City', 'Town', 'Suburban', 'Rural']);
+        document.getElementById('s_InternetAccess').value = pick(['0', '1']);
+        document.getElementById('s_first_generation_college_flag').value = pick(['0', '1']);
+        document.getElementById('s_study_environment_score').value = num(3, 10);
+        document.getElementById('s_Commute_Strain').value = Math.floor(num(1, 5, 0));
+        document.getElementById('s_procrastination_tendency').value = num(1, 10);
+        document.getElementById('s_self_efficacy_score').value = num(1, 10);
+        document.getElementById('s_goal_clarity_survey_score').value = num(1, 10);
+        document.getElementById('s_motivation_survey_score').value = num(1, 10);
+
+        // 2. Clear and Add Random History (1-2 Semesters)
+        document.getElementById('semCards').innerHTML = '';
+        semIdx = 0;
+        const historyCount = Math.floor(num(1, 3, 0));
+        for(let i=0; i < historyCount; i++) {
+            addSemCard({ 
+                final_gpa: num(6.0, 9.5), 
+                Shock_Event: pick(['none', 'none', 'financial_stress', 'family_issue', 'competition_success']),
+                Intervention_Active: pick([0, 0, 0, 1]),
+                high_social: Math.random() > 0.7,
+                high_freetime: Math.random() > 0.7,
+                Romantic: Math.random() > 0.8
+            });
+        }
+
+        // 3. Current Semester Environment
+        document.getElementById('c_AttendanceRate').value = num(0.65, 1.0, 2);
+        document.getElementById('c_StudyHours').value = num(1, 12);
+        document.getElementById('c_Effort_Score').value = num(0.3, 1.0, 2);
+        document.getElementById('c_GPA').value = num(5.5, 9.8);
+        document.getElementById('c_Extracurricular').value = pick(['0', '1']);
+        document.getElementById('c_PartTimeJob').value = pick(['0', '1']);
+        document.getElementById('c_ParentSupport').value = Math.floor(num(1, 5, 0));
+        document.getElementById('c_Romantic').value = pick(['0', '1']);
+        document.getElementById('c_FreeTime').value = Math.floor(num(1, 5, 0));
+        document.getElementById('c_GoOut').value = Math.floor(num(1, 5, 0));
+        document.getElementById('c_Social_Distraction').value = num(0.1, 0.9, 2);
+        document.getElementById('c_sleep_hours').value = num(4, 10);
+        document.getElementById('c_exam_anxiety_score').value = num(1, 10);
+        document.getElementById('c_motivation_survey_score').value = num(1, 10);
+        document.getElementById('c_stress_survey_score').value = num(1, 10);
+        
+        // Random Event
+        const hasEvent = Math.random() > 0.7;
+        document.getElementById('c_Shock_Event').value = hasEvent ? pick(['bereavement', 'financial_stress', 'family_issue', 'scholarship_award']) : 'none';
+        document.getElementById('c_Shock_Magnitude').value = hasEvent ? num(1, 5) : 0;
+        
+        // Random Intervention
+        const hasIA = Math.random() > 0.8;
+        document.getElementById('c_Intervention_Applied').value = hasIA ? 'counseling' : 'none';
+        document.getElementById('c_Intervention_Active').value = hasIA ? '1' : '0';
+
+        // 4. IA Academic Data
+        document.getElementById('ia_IA1_Score').value = num(8, 20);
+        document.getElementById('ia_Backlog_Count').value = Math.random() > 0.85 ? Math.floor(num(1, 3, 0)) : 0;
+        document.getElementById('ia_Assignment_Ratio').value = num(0.4, 1.0, 2);
+        document.getElementById('ia_IA2_Score').value = num(8, 20);
+        document.getElementById('ia_Performance_Delta').value = num(-3, 3);
+
+        // Visual Feedback (Flash Green)
+        document.querySelectorAll('.field input, .field select').forEach(el => {
+            el.classList.add('filled', 'flash');
+            setTimeout(() => el.classList.remove('flash'), 600);
+            setTimeout(() => el.classList.remove('filled'), 1500);
+        });
+
+        // Default to "Before IA" view and trigger prediction
+        const firstBtn = document.querySelector('.snap-btn');
+        setSnap('before_ia', firstBtn);
+
+        setTimeout(() => {
+            btn.classList.remove('loading');
+            doPredictAll();
+        }, 600);
+    }
+    
+    function toggleSemCard(hd){ hd.nextElementSibling.classList.toggle('open'); }
+    function removeSemCard(e,idx){ e.stopPropagation(); const card = document.querySelector(`.sem-card[data-idx="${idx}"]`); if(card) card.remove(); updateHistMeta(); renumberSemCards(); }
+    function renumberSemCards(){ document.querySelectorAll('.sem-card').forEach((c,i)=>{ c.querySelector('.sem-card-label').textContent='Semester '+(i+1); }); }
+    function updateHistMeta(){ const n = document.querySelectorAll('.sem-card').length; document.getElementById('meta_hist').textContent=n+' semester'+(n!==1?'s':''); document.getElementById('currSemLabel').textContent='Semester '+(n+1); }
+
+    function clearAll(){
+        document.querySelectorAll('.field input, .field select').forEach(el=>{ if(el.tagName==='SELECT') el.selectedIndex=0; else el.value=''; });
+        document.getElementById('semCards').innerHTML=''; semIdx=0; updateHistMeta();
+        document.getElementById('results').classList.remove('vis');
+        Object.values(charts).forEach(c=>c.destroy()); charts={};
+        document.getElementById('carryRow').style.display='none';
+    }
+
+    // Init
+    updateHistMeta();
+</script>
+</body>
+</html>

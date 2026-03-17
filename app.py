@@ -335,19 +335,13 @@ def predict_all_tasks(snapshot: str, features: dict) -> dict:
     drop = out.get('dropout', {}).get('Dropout_Probability')
     arch = out.get('archetype', {}).get('Archetype_Predicted')
 
-    # CRITICAL FIX: Ensure no null values are returned to frontend
-    # Default to safe middle-ground values if predictions fail
-    if gpa is None: gpa = 5.0
-    if drop is None: drop = 0.5
-    if arch is None: arch = 'unknown'
-
-    comp = round(0.5 * drop + 0.5 * max(0, (5 - gpa) / 5), 3)
-    tier = _risk_tier(comp)
+    comp = round(0.5 * drop + 0.5 * max(0, (5 - gpa) / 5), 3) if (gpa is not None and drop is not None) else None
+    tier = _risk_tier(comp) if comp is not None else 'Unknown'
 
     out['summary'] = {
-        'GPA_Predicted': round(gpa, 2), 'Dropout_Probability': round(drop, 4), 'Archetype': arch,
+        'GPA_Predicted': gpa, 'Dropout_Probability': drop, 'Archetype': arch,
         'Composite_Risk_Score': comp, 'Overall_Risk_Tier': tier,
-        'Overall_Intervention': _intervention_level(tier),
+        'Overall_Intervention': _intervention_level(tier) if tier != 'Unknown' else 'UNKNOWN',
     }
     return out
 
@@ -599,23 +593,65 @@ def parse_student_request(data: dict):
 @app.route('/predict/full_profile', methods=['POST'])
 def full_profile():
     try:
+        # Step 1: Get and validate input
         data = request.get_json(force=True)
-        static, carry, current, snapshot, sem_id = parse_student_request(data)
-        features = build_feature_dict(static, carry, current, sem_id)
-        result   = predict_all_tasks(snapshot, features)
-        result['carry_state_computed'] = {
-            'semester'           : sem_id,
-            'Dynamic_Motivation' : round(carry['motivation'], 2),
-            'Dynamic_Confidence' : round(carry['confidence'], 2),
-            'Dynamic_Burnout'    : round(carry['burnout'],    2),
-            'Archetype_Prev'     : carry['archetype'],
-            'Prev_GPA'           : round(carry['prev_gpa'],   2),
-        }
+        if not data:
+            raise ValueError("Request body is empty")
+        
+        # Step 2: Parse student data
+        try:
+            static, carry, current, snapshot, sem_id = parse_student_request(data)
+        except Exception as e:
+            logging.error(f"Error parsing student request: {str(e)}")
+            raise ValueError(f"Invalid student data: {str(e)}")
+        
+        # Step 3: Build features
+        try:
+            features = build_feature_dict(static, carry, current, sem_id)
+        except Exception as e:
+            logging.error(f"Error building features: {str(e)}")
+            raise ValueError(f"Cannot build features: {str(e)}")
+        
+        # Step 4: Run predictions
+        try:
+            result = predict_all_tasks(snapshot, features)
+        except Exception as e:
+            logging.error(f"Error in predict_all_tasks: {str(e)}")
+            raise ValueError(f"Prediction failed: {str(e)}")
+        
+        # Step 5: Add carry state (with safe defaults)
+        try:
+            result['carry_state_computed'] = {
+                'semester'           : sem_id,
+                'Dynamic_Motivation' : round(carry.get('motivation', 5.0), 2),
+                'Dynamic_Confidence' : round(carry.get('confidence', 5.0), 2),
+                'Dynamic_Burnout'    : round(carry.get('burnout', 0.0), 2),
+                'Archetype_Prev'     : carry.get('archetype', 'unknown'),
+                'Prev_GPA'           : round(carry.get('prev_gpa', 5.0), 2),
+            }
+        except Exception as e:
+            logging.error(f"Error building carry state: {str(e)}")
+            # Don't fail on carry state, it's optional
+            result['carry_state_computed'] = {
+                'semester': sem_id,
+                'Dynamic_Motivation': 5.0,
+                'Dynamic_Confidence': 5.0,
+                'Dynamic_Burnout': 0.0,
+                'Archetype_Prev': 'unknown',
+                'Prev_GPA': 5.0,
+            }
+        
         return jsonify(result)
-    except (ValueError, KeyError) as e: return jsonify({'error': str(e)}), 400
+        
+    except ValueError as e:
+        logging.error(f"ValueError in full_profile: {str(e)}")
+        return jsonify({'error': str(e), 'type': 'validation'}), 400
+    except KeyError as e:
+        logging.error(f"KeyError in full_profile: {str(e)}")
+        return jsonify({'error': f'Missing field: {str(e)}', 'type': 'missing_field'}), 400
     except Exception as e:
-        logging.error(traceback.format_exc())
-        return jsonify({'error': 'Full profile failed', 'details': str(e)}), 500
+        logging.error(f"Unexpected error in full_profile: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({'error': str(e), 'type': 'unknown', 'details': 'Check server logs'}), 500
 
 @app.route('/predict/whatif', methods=['POST'])
 def whatif():

@@ -23,4 +23,4 @@ data/
 Thumbs.db
 
 # Optional: ignore trained models if they get big
-models/
+# models/

@@ -568,7 +568,7 @@ header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify
 </div><!-- end wrap -->
 
 <script>
-    const API_BASE_URL = 'http://127.0.0.1:5001'; 
+    const API_BASE_URL = window.location.origin;
     let charts = {};
     let currentStage = 'before_ia';
     
